@@ -21,7 +21,7 @@ The tangency portfolio holds 84% JPM and is short XOM (-30%) and MSFT (-6%). Unc
 
 1. Download `Markowitz_Portfolio_Optimizer.xlsm`, open it in Excel and enable macros. Windows blocks macros in files downloaded from the internet; if the macro bar does not appear, right-click the file, choose Properties and tick Unblock.
 2. Click **Open Optimizer** on the Cover sheet.
-3. Enter the risk-free rate (in %), periods per year (252 for daily data), the number of frontier points and random portfolios, then click **Calculate**.
+3. Enter the risk-free rate (in %), periods per year (252 for daily data), the number of frontier points and random portfolios, then click **Calculate**. The input cells on the Optimizer sheet only record the last run, so change the rate in the form, not in the sheet.
 
 To use your own data, click **Import CSV** and select one file per ticker with Date and Close columns (the format Stooq exports). The import uses `Scripting.Dictionary`, so it needs Excel for Windows.
 
@@ -36,7 +36,7 @@ To use your own data, click **Import CSV** and select one file per ticker with D
 
 ## Method
 
-Daily log returns are annualized with 252 trading days. With the covariance matrix Σ, expected returns μ and a vector of ones, the frontier scalars are A = 1'Σ⁻¹1, B = 1'Σ⁻¹μ, C = μ'Σ⁻¹μ and D = AC - B². The GMVP weights are Σ⁻¹1 / A, the tangency weights are Σ⁻¹(μ - r_f) scaled to sum to one, and each frontier point is w = g + h·m for a target return m. Short selling is allowed on the frontier. A Monte Carlo simulation draws 2,000 random long-only portfolios (uniform over the simplex) to show the feasible region.
+Daily log returns are annualized with 252 trading days. With the covariance matrix Σ, expected returns μ and a vector of ones, the frontier scalars are A = 1'Σ⁻¹1, B = 1'Σ⁻¹μ, C = μ'Σ⁻¹μ and D = AC - B². The GMVP weights are Σ⁻¹1 / A, the tangency weights are Σ⁻¹(μ - r_f) scaled to sum to one, and each frontier point is w = g + h·m for a target return m. The frontier is drawn over a fixed range of target returns, from the GMVP to 1.5 times the gap to the highest asset return, so the curve and the chart axes stay put and a change in the risk-free rate only moves the tangency point and the capital market line. Short selling is allowed on the frontier. A Monte Carlo simulation draws 2,000 random long-only portfolios (uniform over the simplex) to show the feasible region.
 
 ## Code
 
