@@ -8,14 +8,14 @@ I built it as the final project for JEM128 Financial Modeling Using MS Excel, VB
 
 ## Sample data and results
 
-The workbook ships with daily closing prices for AAPL, JPM, KO, MSFT and XOM from December 2023 to December 2025 (Stooq, adjusted for splits and dividends). With a 5% risk-free rate:
+The workbook ships with daily closing prices for AAPL, JPM, KO, MSFT and XOM from December 2023 to December 2025 (Stooq, adjusted for splits and dividends). With a 3% risk-free rate:
 
 | Portfolio | Return | Volatility | Sharpe ratio |
 |---|---:|---:|---:|
-| Global minimum variance | 11.6% | 11.2% | 0.59 |
-| Tangency | 39.3% | 25.5% | 1.34 |
+| Global minimum variance | 11.6% | 11.2% | 0.77 |
+| Tangency | 32.9% | 20.9% | 1.43 |
 
-The tangency portfolio holds 108% JPM and is short XOM (-45%) and MSFT (-15%). Unconstrained mean-variance weights react strongly to the estimated returns, and two years of history is a short sample, so these are in-sample figures, not a forecast.
+The tangency portfolio holds 84% JPM and is short XOM (-30%) and MSFT (-6%). Unconstrained mean-variance weights react strongly to the estimated returns, and two years of history is a short sample, so these are in-sample figures, not a forecast.
 
 ## How to run
 
