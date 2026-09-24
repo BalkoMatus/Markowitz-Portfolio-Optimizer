@@ -125,10 +125,18 @@ Public Sub RunOptimization(ByVal rf As Double, ByVal periodsPerYear As Double, _
     DrawColumnHeaders ws, secRow + 1, 2, Array("Point", "Return", "Volatility"), True
 
     Dim gmvpRet As Double, lo As Double, hi As Double, stepSize As Double, tr As Double
-    Dim w() As Double, k As Long, frFirst As Long, frLast As Long
+    Dim w() As Double, k As Long, frFirst As Long, frLast As Long, maxRet As Double
     gmvpRet = fc.b / fc.a
+    maxRet = mu(1, 1)
+    For j = 2 To n
+        If mu(j, 1) > maxRet Then maxRet = mu(j, 1)
+    Next j
+    ' The range depends on the assets, not on the tangency portfolio, so the curve
+    ' stays put when the risk-free rate changes. It is extended only if the tangency
+    ' portfolio lies above it.
     lo = gmvpRet
-    hi = gmvpRet + 2# * (tRet - gmvpRet)
+    hi = gmvpRet + 1.5 * (maxRet - gmvpRet)
+    If tRet > hi Then hi = tRet + 0.25 * (tRet - gmvpRet)
     If hi <= lo Then hi = lo + Abs(lo) + 0.1
     stepSize = (hi - lo) / (nFrontier - 1)
     frFirst = secRow + 2
@@ -136,19 +144,42 @@ Public Sub RunOptimization(ByVal rf As Double, ByVal periodsPerYear As Double, _
     For k = 0 To nFrontier - 1
         tr = lo + k * stepSize
         w = FrontierWeights(mu, Sigma, tr)
-        ws.Cells(frFirst + k, 2).Value = PointLabel(k, nFrontier, tRet > gmvpRet)
+        ws.Cells(frFirst + k, 2).Value = PointLabel(k)
         ws.Cells(frFirst + k, 3).Value = tr
         ws.Cells(frFirst + k, 4).Value = PortStdDev(w, Sigma)
     Next k
     ws.Range(ws.Cells(frFirst, 2), ws.Cells(frLast, 2)).HorizontalAlignment = xlLeft
     ws.Range(ws.Cells(frFirst, 3), ws.Cells(frLast, 4)).NumberFormat = FMT_PCT
 
+    ' ===== Chart frame =====
+    ' Axis limits come from the frontier range and the assets, so the frame does not
+    ' move with the risk-free rate. Long-only random portfolios stay inside it.
+    Dim xMax As Double, yMax As Double, yMin As Double
+    xMax = ws.Cells(frLast, 4).Value
+    yMax = hi
+    yMin = 0#
+    For j = 1 To n
+        If Sqr(Sigma(j, j)) > xMax Then xMax = Sqr(Sigma(j, j))
+        If mu(j, 1) > yMax Then yMax = mu(j, 1)
+        If mu(j, 1) < yMin Then yMin = mu(j, 1)
+    Next j
+    xMax = RoundUpTo(xMax * 1.05, 0.05)
+    yMax = RoundUpTo(yMax * 1.05, 0.1)
+    If yMin < 0 Then yMin = -RoundUpTo(-yMin * 1.05, 0.1)
+
     ' ===== Chart data (columns S:T) =====
+    ' Capital market line from (0, rf) through the tangency portfolio, cut at the chart frame.
     Dim c As Long: c = COL_CHARTDATA
+    Dim cmlSlope As Double, cmlX As Double
+    If tVol > 0 Then cmlSlope = (tRet - rf) / tVol
+    cmlX = xMax
+    If cmlSlope > 0 Then
+        If rf + cmlSlope * cmlX > yMax Then cmlX = (yMax - rf) / cmlSlope
+    End If
     ws.Cells(10, c).Value = 0#
     ws.Cells(10, c + 1).Value = rf
-    ws.Cells(11, c).Value = tVol * 1.4
-    ws.Cells(11, c + 1).Value = rf + 1.4 * (tRet - rf)
+    ws.Cells(11, c).Value = cmlX
+    ws.Cells(11, c + 1).Value = rf + cmlSlope * cmlX
 
     Dim vols() As Double, rets() As Double
     RandomCloud mu, Sigma, nCloud, vols, rets
@@ -160,7 +191,7 @@ Public Sub RunOptimization(ByVal rf As Double, ByVal periodsPerYear As Double, _
         .Font.Color = CLR_GREY
     End With
 
-    DrawFrontierChart ws, ROW_ASSETS, totRow - 1, frFirst, frLast, 15, 14 + nCloud
+    DrawFrontierChart ws, ROW_ASSETS, totRow - 1, frFirst, frLast, 15, 14 + nCloud, xMax, yMin, yMax
 
     Application.ScreenUpdating = True
     MsgBox "Optimization complete. See the '" & OUT_SHEET & "' sheet.", vbInformation
@@ -193,7 +224,12 @@ Private Sub DrawOptimizerFrame(ByVal ws As Worksheet)
     ws.Range("C9:C13").NumberFormat = FMT_INT
     ws.Range("C14:C15").NumberFormat = FMT_DATE
     ws.Range("C14:C15").HorizontalAlignment = xlRight
-    ws.Range("C8:C11").Font.Color = CLR_INPUT
+    With ws.Range("B16")
+        .Value = "Inputs used in the last run. To change them, click Open Optimizer on the Cover sheet."
+        .Font.Italic = True
+        .Font.Size = 9
+        .Font.Color = CLR_GREY
+    End With
 
     ' Portfolios
     DrawSection ws, 17, 2, 6, "Portfolios"
@@ -217,14 +253,15 @@ Private Sub DrawOptimizerFrame(ByVal ws As Worksheet)
     ws.Range(ws.Cells(8, COL_CHARTDATA), ws.Cells(14, COL_CHARTDATA + 1)).Font.Color = CLR_GREY
 End Sub
 
-' "1 (GMVP)" for the first point, "(Tangency)" on the middle point when it sits exactly there.
-Private Function PointLabel(ByVal k As Long, ByVal nFrontier As Long, ByVal tangAbove As Boolean) As String
+' "1 (GMVP)" for the first point, then plain numbers.
+Private Function PointLabel(ByVal k As Long) As String
     PointLabel = CStr(k + 1)
-    If k = 0 Then
-        PointLabel = PointLabel & " (GMVP)"
-    ElseIf tangAbove And (nFrontier Mod 2 = 1) And k = (nFrontier - 1) \ 2 Then
-        PointLabel = PointLabel & " (Tangency)"
-    End If
+    If k = 0 Then PointLabel = PointLabel & " (GMVP)"
+End Function
+
+' Round x up to the next multiple of stepSize (for axis limits).
+Private Function RoundUpTo(ByVal x As Double, ByVal stepSize As Double) As Double
+    RoundUpTo = -Int(-x / stepSize + 1E-09) * stepSize
 End Function
 
 ' First and last date on the Data sheet.

@@ -14,7 +14,8 @@ Private Const CLR_GRID As Long = 14277081      ' RGB(217, 217, 217)
 Public Sub DrawFrontierChart(ByVal ws As Worksheet, _
         ByVal assetFirst As Long, ByVal assetLast As Long, _
         ByVal frFirst As Long, ByVal frLast As Long, _
-        ByVal cloudFirst As Long, ByVal cloudLast As Long)
+        ByVal cloudFirst As Long, ByVal cloudLast As Long, _
+        ByVal xMax As Double, ByVal yMin As Double, ByVal yMax As Double)
     Dim oc As ChartObject, ch As Chart, s As Series, p As Long, cd As Long
     cd = COL_CHARTDATA
 
@@ -102,6 +103,9 @@ Public Sub DrawFrontierChart(ByVal ws As Worksheet, _
         .AxisTitle.Text = "Volatility (annual)"
         .TickLabels.NumberFormat = "0%"
         .HasMajorGridlines = False
+        .MinimumScale = 0
+        .MaximumScale = xMax
+        If xMax > 0.5 Then .MajorUnit = 0.1 Else .MajorUnit = 0.05
     End With
     With ch.Axes(xlValue)
         .HasTitle = True
@@ -109,6 +113,9 @@ Public Sub DrawFrontierChart(ByVal ws As Worksheet, _
         .TickLabels.NumberFormat = "0%"
         .HasMajorGridlines = True
         .MajorGridlines.Format.Line.ForeColor.RGB = CLR_GRID
+        .MinimumScale = yMin
+        .MaximumScale = yMax
+        .MajorUnit = 0.1
     End With
     ch.HasLegend = True
     ch.Legend.Position = xlLegendPositionBottom
